@@ -1,8 +1,8 @@
 {
-  "Title": "FPS Sample",
+  "Title": "Space FPS Sample",
   "Type": "game",
   "Org": "local",
-  "Ident": "fps_sample",
+  "Ident": "space_fps_sample",
   "Tags": "",
   "Schema": 1,
   "HasAssets": true,
@@ -72,6 +72,12 @@
     "ProjectTemplate": {
       "Icon": "directions_walk",
       "Order": -12
+    },
+    "CsProjName": "",
+    "Compiler": {
+      "RootNamespace": "GameTemplate",
+      "DefineConstants": "SANDBOX;ADDON;DEBUG",
+      "NoWarn": "1701;1702;1591;"
     }
   }
 }
