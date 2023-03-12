@@ -1,10 +1,13 @@
-using Sandbox;
+namespace GameTemplate.Weapons;
 
-namespace Facepunch.Gunfight.WeaponSystem;
-
-[Title( "Weapon" ), Icon( "track_changes" )]
+[Prefab, Title( "Weapon" ), Icon( "track_changes" )]
 public partial class Weapon : AnimatedEntity
 {
+	// Won't be Net eventually, when we serialize prefabs on client
+	[Net, Prefab, Category( "Animation" )] public WeaponHoldType HoldType { get; set; } = WeaponHoldType.Pistol;
+	[Net, Prefab, Category( "Animation" )] public WeaponHandedness Handedness { get; set; } = WeaponHandedness.Both;
+	[Net, Prefab, Category( "Animation" )] public float HoldTypePose { get; set; } = 0;
+
 	public AnimatedEntity EffectEntity => ViewModelEntity.IsValid() ? ViewModelEntity : this;
 	public WeaponViewModel ViewModelEntity { get; protected set; }
 	public Player Player => Owner as Player;
@@ -31,6 +34,9 @@ public partial class Weapon : AnimatedEntity
 	public void OnHolster( Player player )
 	{
 		EnableDrawing = false;
+
+		if ( Game.IsServer )
+			DestroyViewModel( To.Single( player ) );
 	}
 
 	/// <summary>
@@ -59,9 +65,20 @@ public partial class Weapon : AnimatedEntity
 	[ClientRpc]
 	public void CreateViewModel()
 	{
+		if ( GetComponent<ViewModelComponent>() is not ViewModelComponent comp ) return;
+
 		var vm = new WeaponViewModel( this );
-		vm.Model = WeaponData.CachedViewModel;
+		vm.Model = Model.Load( comp.ViewModelPath );
 		ViewModelEntity = vm;
+	}
+
+	[ClientRpc]
+	public void DestroyViewModel()
+	{
+		if ( ViewModelEntity.IsValid() )
+		{
+			ViewModelEntity.Delete();
+		}
 	}
 
 	public override void Simulate( IClient cl )
@@ -76,6 +93,31 @@ public partial class Weapon : AnimatedEntity
 
 	public override string ToString()
 	{
-		return $"Weapon ({WeaponData?.Name})";
+		return $"Weapon ({Name})";
 	}
 }
+
+/// <summary>
+/// Describes the holdtype of a weapon, which tells our animgraph which animations to use.
+/// </summary>
+public enum WeaponHoldType
+{
+	None,
+	Pistol,
+	Rifle,
+	Shotgun,
+	Item,
+	Fists,
+	Swing
+}
+
+/// <summary>
+/// Describes the handedness of a weapon, which hand (or both) we hold the weapon in.
+/// </summary>
+public enum WeaponHandedness
+{
+	Both,
+	Right,
+	Left
+}
+

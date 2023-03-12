@@ -1,9 +1,7 @@
-using Facepunch.Gunfight.Mechanics;
-using Facepunch.Gunfight.WeaponSystem;
-using Sandbox;
-using System.Linq;
+using GameTemplate.Mechanics;
+using GameTemplate.Weapons;
 
-namespace Facepunch.Gunfight;
+namespace GameTemplate;
 
 public partial class Player : AnimatedEntity
 {
@@ -32,14 +30,14 @@ public partial class Player : AnimatedEntity
 	[Net] public Vector3 GravityDirection { get; set; } = Game.PhysicsWorld.Gravity.Normal;
 
 	/// <summary>
+	/// The player's camera.
+	/// </summary>
+	[BindComponent] public PlayerCamera Camera { get; }
+
+	/// <summary>
 	/// Accessor for getting a player's active weapon.
 	/// </summary>
 	public Weapon ActiveWeapon => Inventory?.ActiveWeapon;
-
-	/// <summary>
-	/// A camera is known only to the local client. This cannot be used on the server.
-	/// </summary>
-	public PlayerCamera PlayerCamera { get; protected set; }
 
 	/// <summary>
 	/// The information for the last piece of damage this player took.
@@ -49,12 +47,12 @@ public partial class Player : AnimatedEntity
 	/// <summary>
 	/// How long since the player last played a footstep sound.
 	/// </summary>
-	TimeSince TimeSinceFootstep = 0;
+	public TimeSince TimeSinceFootstep { get; protected set; } = 0;
 
 	/// <summary>
-	/// A cached model used for all players.
+	/// The model your player will use.
 	/// </summary>
-	public static Model PlayerModel = Model.Load( "models/citizen/citizen.vmdl" );
+	static Model PlayerModel = Model.Load( "models/citizen/citizen.vmdl" );
 
 	/// <summary>
 	/// When the player is first created. This isn't called when a player respawns.
@@ -91,6 +89,7 @@ public partial class Player : AnimatedEntity
 			.ToList()
 			.ForEach( x => x.EnableDrawing = true );
 
+		// We need a player controller to work with any kind of mechanics.
 		var ctrl = Components.Create<PlayerController>();
 		// Reset some helper data
 		ctrl.LastInputRotation = Rotation.Identity;
@@ -108,26 +107,18 @@ public partial class Player : AnimatedEntity
 		Components.Create<InteractionMechanic>();
 
 		Components.Create<PlayerAnimator>();
+		Components.Create<PlayerCamera>();
+
 		var inventory = Components.Create<Inventory>();
-		inventory.AddWeapon( WeaponData.CreateInstance( "SMG" ) );
-		inventory.AddWeapon( WeaponData.CreateInstance( "Semi-Auto Pistol" ), false );
+		inventory.AddWeapon( PrefabLibrary.Spawn<Weapon>( "prefabs/pistol.prefab" ) );
+		inventory.AddWeapon( PrefabLibrary.Spawn<Weapon>( "prefabs/smg.prefab" ), false );
+
+		SetupClothing();
 
 		GameManager.Current?.MoveToSpawnpoint( this );
 		ResetInterpolation();
-
-		ClientRespawn( To.Single( Client ) );
-
-		UpdateClothes();
 	}
 
-	/// <summary>
-	/// Called clientside when the player respawns. Useful for adding components like the camera.
-	/// </summary>
-	[ClientRpc]
-	public virtual void ClientRespawn()
-	{
-		PlayerCamera = new PlayerCamera();
-	}
 
 	/// <summary>
 	/// Called every server and client tick.
@@ -137,8 +128,6 @@ public partial class Player : AnimatedEntity
 	{
 		Controller?.Simulate( cl );
 		Animator?.Simulate( cl );
-
-		// Simulate our active weapon if we can.
 		Inventory?.Simulate( cl );
 	}
 
@@ -149,12 +138,7 @@ public partial class Player : AnimatedEntity
 	public override void FrameSimulate( IClient cl )
 	{
 		Controller?.FrameSimulate( cl );
-		Animator?.FrameSimulate( cl );
-
-		// Simulate our active weapon if we can.
-		Inventory?.FrameSimulate( cl );
-
-		PlayerCamera?.Update( this );
+		Camera?.Update( this );
 	}
 
 	[ClientRpc]
@@ -198,7 +182,7 @@ public partial class Player : AnimatedEntity
 			}
 		}
 
-		this.ProceduralHitReaction( info, 0.05f );
+		this.ProceduralHitReaction( info );
 	}
 
 	private async void AsyncRespawn()
@@ -221,6 +205,7 @@ public partial class Player : AnimatedEntity
 			Controller.Remove();
 			Animator.Remove();
 			Inventory.Remove();
+			Camera.Remove();
 
 			// Disable all children as well.
 			Children.OfType<ModelEntity>()
@@ -270,7 +255,7 @@ public partial class Player : AnimatedEntity
 		(ConsoleSystem.Caller.Pawn as Player)?.TakeDamage( DamageInfo.Generic( 1000f ) );
 	}
 
-	[ConCmd.Server( "sethp" )]
+	[ConCmd.Admin( "sethp" )]
 	public static void SetHP( float value )
 	{
 		(ConsoleSystem.Caller.Pawn as Player).Health = value;

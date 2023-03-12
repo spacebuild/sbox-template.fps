@@ -1,8 +1,4 @@
-using Editor;
-using Sandbox;
-using System.Collections.Generic;
-
-namespace Facepunch.Gunfight.WeaponSystem;
+namespace GameTemplate.Weapons;
 
 [Title( "ViewModel" ), Icon( "pan_tool" )]
 public partial class WeaponViewModel : AnimatedEntity
@@ -39,7 +35,6 @@ public partial class WeaponViewModel : AnimatedEntity
 			return;
 
 		Camera.Main.SetViewModelCamera( 80f, 1, 500 );
-		AddRecoilEffects();
 		AddEffects();
 	}
 

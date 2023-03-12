@@ -1,26 +1,34 @@
-using Sandbox;
-using System;
-
-namespace Facepunch.Gunfight.WeaponSystem;
+namespace GameTemplate.Weapons;
 
 public partial class WeaponComponent : EntityComponent<Weapon>
 {
-	/// <summary>
-	/// Accessor.
-	/// </summary>
 	protected Weapon Weapon => Entity;
 	protected Player Player => Weapon.Owner as Player;
+	protected string Identifier => DisplayInfo.ClassName.Trim();
+	protected virtual bool UseGameEvents => true;
 
+	/// <summary>
+	/// Is the weapon component active? Could mean are we shooting, reloading, aiming..
+	/// </summary>
 	[Net, Predicted] public bool IsActive { get; protected set; }
+
+	/// <summary>
+	/// Time (in seconds) since IsActive = true
+	/// </summary>
 	[Net, Predicted] public TimeSince TimeSinceActivated { get; protected set; }
 
-	public virtual string Name => info.Name.Trim();
-	protected virtual bool EnableActivateEvents => true;
+	DisplayInfo? displayInfo;
 
-	DisplayInfo info;
-	public WeaponComponent()
+	/// <summary>
+	/// Cached DisplayInfo for this weapon, so we don't fetch it every single time we fire events.
+	/// </summary>
+	public DisplayInfo DisplayInfo
 	{
-		info = DisplayInfo.For( this );
+		get
+		{
+			displayInfo ??= DisplayInfo.For( this );
+			return displayInfo.Value;
+		}
 	}
 
 	/// <summary>
@@ -50,8 +58,8 @@ public partial class WeaponComponent : EntityComponent<Weapon>
 	{
 		TimeSinceActivated = 0;
 
-		if ( EnableActivateEvents )
-			RunGameEvent( $"{Name}.start" );
+		if ( UseGameEvents )
+			RunGameEvent( $"{Identifier}.start" );
 	}
 
 	/// <summary>
@@ -94,8 +102,8 @@ public partial class WeaponComponent : EntityComponent<Weapon>
 	/// <param name="player"></param>
 	protected virtual void OnStop( Player player )
 	{
-		if ( EnableActivateEvents )
-			RunGameEvent( $"{Name}.stop" );
+		if ( UseGameEvents )
+			RunGameEvent( $"{Identifier}.stop" );
 	}
 
 	/// <summary>

@@ -1,10 +1,6 @@
-using Facepunch.Gunfight.Mechanics;
-using Sandbox;
-using System.Collections.Generic;
-using System.Linq;
-using Sandbox.Systems.Util;
+using GameTemplate.Mechanics;
 
-namespace Facepunch.Gunfight;
+namespace GameTemplate;
 
 public partial class PlayerController : EntityComponent<Player>, ISingletonComponent
 {
@@ -91,17 +87,6 @@ public partial class PlayerController : EntityComponent<Player>, ISingletonCompo
 
 	protected void SimulateEyes()
 	{
-		Player.EyeRotation = Rotation * Rotation.FromPitch( Player.LookInput.ToRotation().Pitch() );
-		Player.EyeLocalPosition = Vector3.Up * CurrentEyeHeight;
-	}
-
-	protected void SimulateMechanics()
-	{
-		foreach ( var mechanic in Mechanics )
-		{
-			mechanic.TrySimulate( this );
-		}
-
 		var target = EyeHeight;
 		// Magic number :sad:
 		var trace = TraceBBox( Position, Position, 0, 10f );
@@ -113,6 +98,22 @@ public partial class PlayerController : EntityComponent<Player>, ISingletonCompo
 		{
 			CurrentEyeHeight = CurrentEyeHeight.LerpTo( target, Time.Delta * 10f );
 		}
+
+		Player.EyeRotation = Rotation * Rotation.FromPitch( Player.LookInput.ToRotation().Pitch() );
+		Player.EyeLocalPosition = Vector3.Up * CurrentEyeHeight;
+	}
+
+	protected void SimulateMechanics()
+	{
+		foreach ( var mechanic in Mechanics )
+		{
+			mechanic.TrySimulate( this );
+		}
+	}
+
+	public virtual void FrameSimulate( IClient cl )
+	{
+		SimulateEyes();
 	}
 
 	public virtual void Simulate( IClient cl )
@@ -147,12 +148,6 @@ public partial class PlayerController : EntityComponent<Player>, ISingletonCompo
 		}
 	}
 
-	public virtual void FrameSimulate( IClient cl )
-	{
-		SimulateRotation();
-		SimulateEyes();
-	}
-
 	/// <summary>
 	/// Traces the bbox and returns the trace result.
 	/// LiftFeet will move the start position up by this amount, while keeping the top of the bbox at the same 
@@ -175,7 +170,7 @@ public partial class PlayerController : EntityComponent<Player>, ISingletonCompo
 
 		var tr = Trace.Ray( start, end )
 					.Size( mins, maxs )
-					.WithAnyTags( "solid", "playerclip", "passbullets", "player" )
+					.WithAnyTags( "solid", "playerclip", "passbullets" )
 					.Ignore( Player )
 					.Run();
 
