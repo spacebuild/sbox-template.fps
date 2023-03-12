@@ -1,8 +1,4 @@
-﻿using System;
-using System.Numerics;
-using Sandbox;
-
-namespace Facepunch.Gunfight;
+﻿namespace GameTemplate;
 
 public partial class PlayerController
 {
